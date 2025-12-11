@@ -1,0 +1,72 @@
+version: "3.9"
+
+services:
+
+  data-simulator:
+    container_name: app-data-simulator
+    build: ./data-simulator
+    depends_on:
+      iot-controller:
+        condition: service_started
+    networks:
+      - default
+
+  iot-controller:
+    container_name: app-iot-controller
+    build: ./iot-controller
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - default
+
+  rule-engine:
+    container_name: app-rule-engine
+    build: ./rule-engine
+    depends_on:
+      mongo:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - default
+
+  rabbitmq:
+    container_name: wire-rabbitmq
+    image: rabbitmq:4.2.1-management-alpine
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: pass
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "status"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mongo:
+    container_name: db-mongo
+    image: mongo:6.0.13-jammy
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: iot
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - .mongo:/data/db
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+networks:
+  default:
+    driver: bridge
