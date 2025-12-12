@@ -1,0 +1,103 @@
+openapi: 3.0.3
+info:
+  title: IoT Controller API
+  description: API for IoT device data ingestion
+  version: 1.0.0
+
+servers:
+  - url: http://localhost:8080
+
+tags:
+  - name: device-data
+    description: API for receiving IoT device data
+
+paths:
+  /api/v1/device-data:
+    post:
+      summary: Receive IoT device data
+      operationId: receiveDeviceData
+      tags:
+        - device-data
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/DeviceDataRequest"
+      responses:
+        200:
+          description: Data received successfully
+        400:
+          description: Bad request - invalid data format
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorObject"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorObject"
+
+components:
+  schemas:
+    DeviceDataRequest:
+      description: IoT device data message
+      type: object
+      required:
+        - device_id
+        - timestamp
+        - seq
+        - metrics
+      properties:
+        device_id:
+          type: string
+          description: Device identifier
+          example: "42"
+        timestamp:
+          type: string
+          format: date-time
+          description: Timestamp when the data was collected
+          example: "2025-01-03T12:00:05.234Z"
+        seq:
+          type: integer
+          format: int64
+          description: Sequence number of the message
+          example: 1203
+        metrics:
+          type: object
+          description: Device metrics as key-value pairs (values can be numbers or strings)
+          additionalProperties:
+            oneOf:
+              - type: number
+                format: double
+              - type: integer
+                format: int64
+              - type: string
+          example:
+            A: 6.3
+            B: 12
+            C: "active"
+        meta:
+          type: object
+          description: Additional metadata as key-value pairs
+          additionalProperties:
+            type: string
+          example:
+            firmware: "1.0.3"
+    ErrorObject:
+      description: Error response object
+      type: object
+      properties:
+        code:
+          description: Numeric error code
+          type: integer
+          format: int32
+        message:
+          description: Unique text identifier of the error
+          type: string
+        humanMessage:
+          description: Human-readable error description
+          type: string
+
