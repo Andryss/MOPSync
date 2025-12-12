@@ -69,12 +69,7 @@ components:
           type: object
           description: Device metrics as key-value pairs (values can be numbers or strings)
           additionalProperties:
-            oneOf:
-              - type: number
-                format: double
-              - type: integer
-                format: int64
-              - type: string
+            type: object
           example:
             A: 6.3
             B: 12
