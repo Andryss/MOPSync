@@ -3,6 +3,7 @@ package ru.itmo.mopsync.iotcontroller.controller;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -14,6 +15,7 @@ import ru.itmo.mopsync.iotcontroller.generated.model.ErrorObject;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.UNSUPPORTED_MEDIA_TYPE;
 
 /**
  * Global exception handler for REST API.
@@ -70,6 +72,17 @@ public class ControllerExceptionHandler {
         String expectedType = ex.getRequiredType().getSimpleName();
         return createErrorObject(Errors.validationError(
                 String.format("Invalid parameter type '%s': expected %s", ex.getName(), expectedType)));
+    }
+
+    /**
+     * Handles unsupported media type errors.
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    @ResponseStatus(UNSUPPORTED_MEDIA_TYPE)
+    public ErrorObject handleHttpMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
+        log.error("HttpMediaTypeNotSupportedException: {}", ex.getMessage(), ex);
+        return createErrorObject(Errors.invalidRequestBodyError(
+                "Unsupported media type: " + ex.getContentType()));
     }
 
     /**
