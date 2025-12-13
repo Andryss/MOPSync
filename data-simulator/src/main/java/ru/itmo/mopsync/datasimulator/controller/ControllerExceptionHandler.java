@@ -4,6 +4,7 @@ import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.converter.HttpMessageNotReadableException;
+import org.springframework.web.HttpMediaTypeNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
@@ -15,6 +16,7 @@ import ru.itmo.mopsync.datasimulator.generated.model.ErrorObject;
 
 import static org.springframework.http.HttpStatus.BAD_REQUEST;
 import static org.springframework.http.HttpStatus.INTERNAL_SERVER_ERROR;
+import static org.springframework.http.HttpStatus.UNSUPPORTED_MEDIA_TYPE;
 
 /**
  * Global exception handler for REST API.
@@ -26,7 +28,6 @@ public class ControllerExceptionHandler {
 
     /**
      * Handles BaseException and returns ErrorObject.
-     * Status code is handled by HttpServletResponse.
      */
     @ExceptionHandler(BaseException.class)
     public ErrorObject handleBaseException(BaseException ex, HttpServletResponse response) {
@@ -82,6 +83,16 @@ public class ControllerExceptionHandler {
         log.error("MethodArgumentTypeMismatchException: {}", ex.getMessage(), ex);
         String expectedType = ex.getRequiredType().getSimpleName();
         return createErrorObject(Errors.invalidParameterTypeError(ex.getName(), expectedType));
+    }
+
+    /**
+     * Handles unsupported media type errors.
+     */
+    @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
+    @ResponseStatus(UNSUPPORTED_MEDIA_TYPE)
+    public ErrorObject handleHttpMediaTypeNotSupported(HttpMediaTypeNotSupportedException ex) {
+        log.error("HttpMediaTypeNotSupportedException: {}", ex.getMessage(), ex);
+        return createErrorObject(Errors.invalidInputError("Unsupported media type: " + ex.getContentType()));
     }
 
     /**

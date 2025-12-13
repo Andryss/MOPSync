@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ScheduledFuture;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -31,7 +33,8 @@ import ru.itmo.mopsync.datasimulator.model.DeviceSpec;
 @RequiredArgsConstructor
 public class SimulationService implements DisposableBean {
 
-    public static final long DAY_SECS = 24L * 60 * 60;
+    private static final long SECONDS_PER_DAY = 24L * 60 * 60;
+    private static final long MIN_DELAY_SECONDS = 1L;
 
     private final MetricsTemplateResolver templateResolver;
     private final DataGenerator dataGenerator;
@@ -40,6 +43,7 @@ public class SimulationService implements DisposableBean {
 
     private final Map<String, DeviceSpec> devices = new ConcurrentHashMap<>();
     private final Map<String, ScheduledFuture<?>> scheduledTasks = new ConcurrentHashMap<>();
+    private final Lock stateLock = new ReentrantLock();
 
     /**
      * Sets the simulation specification, resolving templates and creating devices.
@@ -48,95 +52,111 @@ public class SimulationService implements DisposableBean {
      * @return response with created device groups
      */
     public SimulationSpecResponse setSimulationSpec(SimulationSpecRequest request) {
-        log.info("Setting simulation specification with {} groups", request.getGroups().size());
+        stateLock.lock();
+        try {
+            log.info("Setting simulation specification with {} groups", request.getGroups().size());
 
-        // Clear existing devices and stop any running simulation
-        stopSimulation();
-        devices.clear();
-
-        List<DeviceGroupResponse> groupResponses = new ArrayList<>();
-
-        for (DeviceGroup group : request.getGroups()) {
-            // Resolve metrics
-            Map<String, MetricDefinition> metrics;
-            if (group.getMetricsTemplate() != null) {
-                metrics = templateResolver.resolveTemplate(group.getMetricsTemplate());
-            } else if (group.getMetrics() != null) {
-                metrics = new HashMap<>(group.getMetrics());
-            } else {
-                throw Errors.metricsRequiredError();
+            // Reset simulation state
+            boolean hasActiveTasks = !scheduledTasks.isEmpty();
+            boolean hasDevices = !devices.isEmpty();
+            if (hasActiveTasks || hasDevices) {
+                log.info("Resetting simulation state");
+                cancelAllScheduledTasks();
+                clearAllDevices();
             }
 
-            // Generate device IDs
-            List<String> deviceIds = new ArrayList<>();
-            for (int i = 0; i < group.getCount(); i++) {
-                String deviceId = UUID.randomUUID().toString();
-                deviceIds.add(deviceId);
-                DeviceSpec deviceSpec = new DeviceSpec();
-                deviceSpec.setId(deviceId);
-                deviceSpec.setFrequency(group.getFrequency());
-                deviceSpec.setSentPackages(0);
-                deviceSpec.setMetrics(metrics);
-                devices.put(deviceId, deviceSpec);
+            List<DeviceGroupResponse> groupResponses = new ArrayList<>();
+            for (DeviceGroup group : request.getGroups()) {
+                // Resolve metrics
+                Map<String, MetricDefinition> metrics;
+                String template = group.getMetricsTemplate();
+                if (template != null && !template.isEmpty()) {
+                    metrics = templateResolver.resolveTemplate(template);
+                } else {
+                    Map<String, MetricDefinition> manualMetrics = group.getMetrics();
+                    if (manualMetrics != null && !manualMetrics.isEmpty()) {
+                        metrics = new HashMap<>(manualMetrics);
+                    } else {
+                        throw Errors.metricsRequiredError();
+                    }
+                }
+
+                // Create devices for group
+                List<String> deviceIds = new ArrayList<>();
+                for (int i = 0; i < group.getCount(); i++) {
+                    String deviceId = UUID.randomUUID().toString();
+                    deviceIds.add(deviceId);
+                    DeviceSpec deviceSpec = new DeviceSpec();
+                    deviceSpec.setId(deviceId);
+                    deviceSpec.setFrequency(group.getFrequency());
+                    deviceSpec.setSentPackages(0);
+                    deviceSpec.setMetrics(metrics);
+                    devices.put(deviceId, deviceSpec);
+                }
+
+                log.info("Created {} devices for group with frequency {}", group.getCount(), group.getFrequency());
+
+                DeviceGroupResponse response = new DeviceGroupResponse()
+                        .frequency(group.getFrequency())
+                        .metrics(metrics)
+                        .deviceIds(deviceIds);
+                groupResponses.add(response);
             }
 
-            DeviceGroupResponse response = new DeviceGroupResponse()
-                    .frequency(group.getFrequency())
-                    .metrics(metrics)
-                    .deviceIds(deviceIds);
-            groupResponses.add(response);
-
-            log.info("Created {} devices for group with frequency {}", group.getCount(), group.getFrequency());
+            return new SimulationSpecResponse().groups(groupResponses);
+        } finally {
+            stateLock.unlock();
         }
-
-        return new SimulationSpecResponse()
-                .groups(groupResponses);
     }
 
     /**
      * Starts the simulation by scheduling data generation tasks for all devices.
      */
     public void startSimulation() {
-        if (!scheduledTasks.isEmpty()) {
-            throw Errors.simulationAlreadyRunningError();
+        stateLock.lock();
+        try {
+            if (!scheduledTasks.isEmpty()) {
+                throw Errors.simulationAlreadyRunningError();
+            }
+            if (devices.isEmpty()) {
+                throw Errors.noDevicesConfiguredError();
+            }
+
+            log.info("Starting simulation for {} devices", devices.size());
+
+            devices.values().forEach(this::scheduleDeviceTask);
+
+            log.info("Simulation started successfully");
+        } finally {
+            stateLock.unlock();
         }
-
-        if (devices.isEmpty()) {
-            throw Errors.noDevicesConfiguredError();
-        }
-
-        log.info("Starting simulation for {} devices", devices.size());
-
-        // Schedule tasks for each device
-        for (DeviceSpec deviceSpec : devices.values()) {
-            scheduleDeviceTask(deviceSpec);
-        }
-
-        log.info("Simulation started successfully");
     }
 
     /**
-     * Stops the simulation by cancelling all scheduled tasks.
+     * Stops the simulation by cancelling all scheduled tasks and clearing devices.
      */
     public void stopSimulation() {
-        if (scheduledTasks.isEmpty()) {
-            return;
+        stateLock.lock();
+        try {
+            boolean hasActiveTasks = !scheduledTasks.isEmpty();
+            boolean hasDevices = !devices.isEmpty();
+
+            if (!hasActiveTasks && !hasDevices) {
+                return;
+            }
+
+            log.info("Stopping simulation");
+            cancelAllScheduledTasks();
+            clearAllDevices();
+            log.info("Simulation stopped successfully");
+        } finally {
+            stateLock.unlock();
         }
-
-        log.info("Stopping simulation");
-
-        // Cancel all scheduled tasks
-        scheduledTasks.forEach((device, task) -> {
-            task.cancel(false);
-            log.debug("Cancelled task for device: {}", device);
-        });
-        scheduledTasks.clear();
-
-        log.info("Simulation stopped successfully");
     }
 
     /**
      * Schedules a periodic task for a device to generate and send data.
+     * Must be called while holding the stateLock.
      *
      * @param deviceSpec device to schedule
      */
@@ -150,15 +170,30 @@ public class SimulationService implements DisposableBean {
             }
         };
 
-        long delaySecs = Math.max(DAY_SECS / deviceSpec.getFrequency(), 1);
-        ScheduledFuture<?> future = taskScheduler.scheduleAtFixedRate(task, Duration.ofSeconds(delaySecs));
+        long delaySeconds = Math.max(SECONDS_PER_DAY / deviceSpec.getFrequency(), MIN_DELAY_SECONDS);
+        ScheduledFuture<?> future = taskScheduler.scheduleAtFixedRate(task, Duration.ofSeconds(delaySeconds));
         scheduledTasks.put(deviceSpec.getId(), future);
-        log.debug("Scheduled task for device {} with delay {} sec", deviceSpec.getId(), delaySecs);
+        log.debug("Scheduled task for device {} with delay {} sec", deviceSpec.getId(), delaySeconds);
     }
 
     @Override
     public void destroy() {
         stopSimulation();
+    }
+
+    // Private helper methods
+    // Note: These methods assume the caller holds the stateLock
+
+    private void cancelAllScheduledTasks() {
+        scheduledTasks.forEach((deviceId, task) -> {
+            task.cancel(false);
+            log.debug("Cancelled task for device: {}", deviceId);
+        });
+        scheduledTasks.clear();
+    }
+
+    private void clearAllDevices() {
+        devices.clear();
     }
 }
 
