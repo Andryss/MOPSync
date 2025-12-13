@@ -10,6 +10,7 @@ import ru.itmo.mopsync.ruleengine.repository.DeviceDataRepository;
 
 import java.util.List;
 import java.util.Map;
+import java.util.function.BiPredicate;
 
 /**
  * Service for evaluating rules against device data.
@@ -20,6 +21,8 @@ import java.util.Map;
 @Service
 @RequiredArgsConstructor
 public class RuleEvaluationService {
+
+    private static final double EPSILON = 0.0001;
 
     private final DeviceDataRepository deviceDataRepository;
 
@@ -112,129 +115,27 @@ public class RuleEvaluationService {
      * @return comparison result
      */
     private boolean compareGreaterThan(Object metricValue, Object threshold) {
-        if (metricValue instanceof String && threshold instanceof String) {
-            return ((String) metricValue).compareTo((String) threshold) > 0;
-        } else if (metricValue instanceof Integer && threshold instanceof Integer) {
-            return ((Integer) metricValue) > ((Integer) threshold);
-        } else if (metricValue instanceof Long && threshold instanceof Long) {
-            return ((Long) metricValue) > ((Long) threshold);
-        } else if (metricValue instanceof Number && threshold instanceof Number) {
-            return ((Number) metricValue).doubleValue() > ((Number) threshold).doubleValue();
-        } else if (metricValue instanceof String && threshold instanceof Number) {
-            // Try to parse string as number
-            try {
-                double metricNum = Double.parseDouble((String) metricValue);
-                return metricNum > ((Number) threshold).doubleValue();
-            } catch (NumberFormatException e) {
-                log.debug("Cannot compare string metric as number: {}", metricValue);
-                return false;
-            }
-        } else if (metricValue instanceof Number && threshold instanceof String) {
-            // Try to parse threshold as number
-            try {
-                double thresholdNum = Double.parseDouble((String) threshold);
-                return ((Number) metricValue).doubleValue() > thresholdNum;
-            } catch (NumberFormatException e) {
-                log.debug("Cannot compare string threshold as number: {}", threshold);
-                return false;
-            }
-        } else {
-            log.debug("Incompatible types for comparison: {} vs {}", metricValue.getClass(), threshold.getClass());
-            return false;
-        }
+        return compareValues(metricValue, threshold,
+                (v, t) -> v > t,
+                (v, t) -> v.compareTo(t) > 0);
     }
 
     private boolean compareLessThan(Object metricValue, Object threshold) {
-        if (metricValue instanceof String && threshold instanceof String) {
-            return ((String) metricValue).compareTo((String) threshold) < 0;
-        } else if (metricValue instanceof Integer && threshold instanceof Integer) {
-            return ((Integer) metricValue) < ((Integer) threshold);
-        } else if (metricValue instanceof Long && threshold instanceof Long) {
-            return ((Long) metricValue) < ((Long) threshold);
-        } else if (metricValue instanceof Number && threshold instanceof Number) {
-            return ((Number) metricValue).doubleValue() < ((Number) threshold).doubleValue();
-        } else if (metricValue instanceof String && threshold instanceof Number) {
-            try {
-                double metricNum = Double.parseDouble((String) metricValue);
-                return metricNum < ((Number) threshold).doubleValue();
-            } catch (NumberFormatException e) {
-                log.debug("Cannot compare string metric as number: {}", metricValue);
-                return false;
-            }
-        } else if (metricValue instanceof Number && threshold instanceof String) {
-            try {
-                double thresholdNum = Double.parseDouble((String) threshold);
-                return ((Number) metricValue).doubleValue() < thresholdNum;
-            } catch (NumberFormatException e) {
-                log.debug("Cannot compare string threshold as number: {}", threshold);
-                return false;
-            }
-        } else {
-            log.debug("Incompatible types for comparison: {} vs {}", metricValue.getClass(), threshold.getClass());
-            return false;
-        }
+        return compareValues(metricValue, threshold,
+                (v, t) -> v < t,
+                (v, t) -> v.compareTo(t) < 0);
     }
 
     private boolean compareGreaterThanOrEqual(Object metricValue, Object threshold) {
-        if (metricValue instanceof String && threshold instanceof String) {
-            return ((String) metricValue).compareTo((String) threshold) >= 0;
-        } else if (metricValue instanceof Integer && threshold instanceof Integer) {
-            return ((Integer) metricValue) >= ((Integer) threshold);
-        } else if (metricValue instanceof Long && threshold instanceof Long) {
-            return ((Long) metricValue) >= ((Long) threshold);
-        } else if (metricValue instanceof Number && threshold instanceof Number) {
-            return ((Number) metricValue).doubleValue() >= ((Number) threshold).doubleValue();
-        } else if (metricValue instanceof String && threshold instanceof Number) {
-            try {
-                double metricNum = Double.parseDouble((String) metricValue);
-                return metricNum >= ((Number) threshold).doubleValue();
-            } catch (NumberFormatException e) {
-                log.debug("Cannot compare string metric as number: {}", metricValue);
-                return false;
-            }
-        } else if (metricValue instanceof Number && threshold instanceof String) {
-            try {
-                double thresholdNum = Double.parseDouble((String) threshold);
-                return ((Number) metricValue).doubleValue() >= thresholdNum;
-            } catch (NumberFormatException e) {
-                log.debug("Cannot compare string threshold as number: {}", threshold);
-                return false;
-            }
-        } else {
-            log.debug("Incompatible types for comparison: {} vs {}", metricValue.getClass(), threshold.getClass());
-            return false;
-        }
+        return compareValues(metricValue, threshold,
+                (v, t) -> v >= t,
+                (v, t) -> v.compareTo(t) >= 0);
     }
 
     private boolean compareLessThanOrEqual(Object metricValue, Object threshold) {
-        if (metricValue instanceof String && threshold instanceof String) {
-            return ((String) metricValue).compareTo((String) threshold) <= 0;
-        } else if (metricValue instanceof Integer && threshold instanceof Integer) {
-            return ((Integer) metricValue) <= ((Integer) threshold);
-        } else if (metricValue instanceof Long && threshold instanceof Long) {
-            return ((Long) metricValue) <= ((Long) threshold);
-        } else if (metricValue instanceof Number && threshold instanceof Number) {
-            return ((Number) metricValue).doubleValue() <= ((Number) threshold).doubleValue();
-        } else if (metricValue instanceof String && threshold instanceof Number) {
-            try {
-                double metricNum = Double.parseDouble((String) metricValue);
-                return metricNum <= ((Number) threshold).doubleValue();
-            } catch (NumberFormatException e) {
-                log.debug("Cannot compare string metric as number: {}", metricValue);
-                return false;
-            }
-        } else if (metricValue instanceof Number && threshold instanceof String) {
-            try {
-                double thresholdNum = Double.parseDouble((String) threshold);
-                return ((Number) metricValue).doubleValue() <= thresholdNum;
-            } catch (NumberFormatException e) {
-                log.debug("Cannot compare string threshold as number: {}", threshold);
-                return false;
-            }
-        } else {
-            log.debug("Incompatible types for comparison: {} vs {}", metricValue.getClass(), threshold.getClass());
-            return false;
-        }
+        return compareValues(metricValue, threshold,
+                (v, t) -> v <= t,
+                (v, t) -> v.compareTo(t) <= 0);
     }
 
     private boolean compareEqual(Object metricValue, Object threshold) {
@@ -245,25 +146,74 @@ public class RuleEvaluationService {
         } else if (metricValue instanceof Long && threshold instanceof Long) {
             return metricValue.equals(threshold);
         } else if (metricValue instanceof Number && threshold instanceof Number) {
-            // Use epsilon for floating point comparison
-            return Math.abs(((Number) metricValue).doubleValue() - ((Number) threshold).doubleValue()) < 0.0001;
-        } else if (metricValue instanceof String && threshold instanceof Number) {
-            try {
-                double metricNum = Double.parseDouble((String) metricValue);
-                return Math.abs(metricNum - ((Number) threshold).doubleValue()) < 0.0001;
-            } catch (NumberFormatException e) {
-                return false;
-            }
-        } else if (metricValue instanceof Number && threshold instanceof String) {
-            try {
-                double thresholdNum = Double.parseDouble((String) threshold);
-                return Math.abs(((Number) metricValue).doubleValue() - thresholdNum) < 0.0001;
-            } catch (NumberFormatException e) {
-                return false;
-            }
+            return Math.abs(((Number) metricValue).doubleValue() - ((Number) threshold).doubleValue()) < EPSILON;
         } else {
+            // Try cross-type numeric comparison
+            Double metricNum = parseToDouble(metricValue);
+            Double thresholdNum = parseToDouble(threshold);
+            if (metricNum != null && thresholdNum != null) {
+                return Math.abs(metricNum - thresholdNum) < EPSILON;
+            }
             return false;
         }
+    }
+
+    /**
+     * Common comparison logic for numeric and string comparisons.
+     *
+     * @param metricValue     metric value
+     * @param threshold       threshold value
+     * @param numericCompare  numeric comparison predicate
+     * @param stringCompare   string comparison predicate
+     * @return comparison result
+     */
+    private boolean compareValues(Object metricValue, Object threshold,
+                                  BiPredicate<Double, Double> numericCompare,
+                                  BiPredicate<String, String> stringCompare) {
+        // Same type comparisons
+        if (metricValue instanceof String && threshold instanceof String) {
+            return stringCompare.test((String) metricValue, (String) threshold);
+        } else if (metricValue instanceof Integer && threshold instanceof Integer) {
+            return numericCompare.test(((Integer) metricValue).doubleValue(),
+                    ((Integer) threshold).doubleValue());
+        } else if (metricValue instanceof Long && threshold instanceof Long) {
+            return numericCompare.test(((Long) metricValue).doubleValue(),
+                    ((Long) threshold).doubleValue());
+        } else if (metricValue instanceof Number && threshold instanceof Number) {
+            return numericCompare.test(((Number) metricValue).doubleValue(),
+                    ((Number) threshold).doubleValue());
+        }
+
+        // Cross-type numeric comparison
+        Double metricNum = parseToDouble(metricValue);
+        Double thresholdNum = parseToDouble(threshold);
+        if (metricNum != null && thresholdNum != null) {
+            return numericCompare.test(metricNum, thresholdNum);
+        }
+
+        log.debug("Incompatible types for comparison: {} vs {}", metricValue.getClass(), threshold.getClass());
+        return false;
+    }
+
+    /**
+     * Attempts to parse a value to double.
+     * Supports Number types and String representations of numbers.
+     *
+     * @param value value to parse
+     * @return parsed double value, or null if parsing fails
+     */
+    private Double parseToDouble(Object value) {
+        if (value instanceof Number) {
+            return ((Number) value).doubleValue();
+        } else if (value instanceof String) {
+            try {
+                return Double.parseDouble((String) value);
+            } catch (NumberFormatException e) {
+                log.debug("Cannot parse string as number: {}", value);
+                return null;
+            }
+        }
+        return null;
     }
 
     /**
