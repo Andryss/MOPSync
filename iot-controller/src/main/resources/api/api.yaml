@@ -54,6 +54,7 @@ components:
         device_id:
           type: string
           description: Device identifier
+          minLength: 1
           example: "42"
         timestamp:
           type: string
@@ -64,10 +65,12 @@ components:
           type: integer
           format: int64
           description: Sequence number of the message
+          minimum: 0
           example: 1203
         metrics:
           type: object
           description: Device metrics as key-value pairs (values can be numbers or strings)
+          minProperties: 1
           additionalProperties:
             type: object
           example:
