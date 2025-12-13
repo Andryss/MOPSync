@@ -1,8 +1,6 @@
 package ru.itmo.mopsync.datasimulator.service;
 
 import java.time.Duration;
-import java.time.OffsetDateTime;
-import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
@@ -17,14 +15,12 @@ import org.springframework.beans.factory.DisposableBean;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
 import org.springframework.stereotype.Service;
 import ru.itmo.mopsync.datasimulator.exception.Errors;
-import ru.itmo.mopsync.datasimulator.generated.iotcontroller.api.DeviceDataApi;
-import ru.itmo.mopsync.datasimulator.generated.iotcontroller.model.DeviceDataRequest;
+import ru.itmo.mopsync.datasimulator.facade.IoTControllerFacade;
 import ru.itmo.mopsync.datasimulator.generated.model.DeviceGroup;
 import ru.itmo.mopsync.datasimulator.generated.model.DeviceGroupResponse;
 import ru.itmo.mopsync.datasimulator.generated.model.MetricDefinition;
 import ru.itmo.mopsync.datasimulator.generated.model.SimulationSpecRequest;
 import ru.itmo.mopsync.datasimulator.generated.model.SimulationSpecResponse;
-import ru.itmo.mopsync.datasimulator.model.DeviceSnapshot;
 import ru.itmo.mopsync.datasimulator.model.DeviceSpec;
 
 /**
@@ -39,7 +35,7 @@ public class SimulationService implements DisposableBean {
 
     private final MetricsTemplateResolver templateResolver;
     private final DataGenerator dataGenerator;
-    private final DeviceDataApi deviceDataApi;
+    private final IoTControllerFacade iotControllerFacade;
     private final ThreadPoolTaskScheduler taskScheduler;
 
     private final Map<String, DeviceSpec> devices = new ConcurrentHashMap<>();
@@ -147,35 +143,17 @@ public class SimulationService implements DisposableBean {
     private void scheduleDeviceTask(DeviceSpec deviceSpec) {
         Runnable task = () -> {
             try {
-                sendData(dataGenerator.generateSnapshot(deviceSpec));
+                iotControllerFacade.sendDeviceData(dataGenerator.generateSnapshot(deviceSpec));
                 deviceSpec.setSentPackages(deviceSpec.getSentPackages() + 1);
             } catch (Exception e) {
                 log.error("Error generating/sending data for device: {}", deviceSpec.getId(), e);
             }
         };
 
-        long delaySecs = DAY_SECS / deviceSpec.getFrequency();
+        long delaySecs = Math.max(DAY_SECS / deviceSpec.getFrequency(), 1);
         ScheduledFuture<?> future = taskScheduler.scheduleAtFixedRate(task, Duration.ofSeconds(delaySecs));
         scheduledTasks.put(deviceSpec.getId(), future);
-        log.debug("Scheduled task for device {} with delay {} ms", deviceSpec.getId(), delaySecs);
-    }
-
-    /**
-     * Sends generated data to the IoT controller API.
-     *
-     * @param snapshot data point to send
-     */
-    private void sendData(DeviceSnapshot snapshot) {
-        String deviceId = snapshot.getDeviceId();
-
-        DeviceDataRequest request = new DeviceDataRequest()
-                .deviceId(deviceId)
-                .timestamp(OffsetDateTime.ofInstant(snapshot.getTimestamp(), ZoneOffset.UTC))
-                .seq(((long) snapshot.getSequenceId()))
-                .metrics(snapshot.getMetrics());
-
-        deviceDataApi.receiveDeviceData(request);
-        log.debug("Sent data for device: {}", deviceId);
+        log.debug("Scheduled task for device {} with delay {} sec", deviceSpec.getId(), delaySecs);
     }
 
     @Override
