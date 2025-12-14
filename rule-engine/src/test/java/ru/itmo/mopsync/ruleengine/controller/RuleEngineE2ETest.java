@@ -1,0 +1,190 @@
+package ru.itmo.mopsync.ruleengine.controller;
+
+import java.time.OffsetDateTime;
+import java.util.List;
+import java.util.Map;
+import java.util.concurrent.TimeUnit;
+
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.amqp.rabbit.core.RabbitTemplate;
+import org.springframework.beans.factory.annotation.Autowired;
+import ru.itmo.mopsync.ruleengine.config.RabbitQueueProperties;
+import ru.itmo.mopsync.ruleengine.model.Alert;
+import ru.itmo.mopsync.ruleengine.model.DeviceDataDocument;
+import ru.itmo.mopsync.ruleengine.model.Rule;
+import ru.itmo.mopsync.ruleengine.repository.AlertRepository;
+import ru.itmo.mopsync.ruleengine.repository.DeviceDataRepository;
+import ru.itmo.mopsync.ruleengine.repository.RuleRepository;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.awaitility.Awaitility.await;
+
+/**
+ * End-to-end tests for rule-engine service.
+ * Tests the full flow: RabbitMQ message -> Listener -> Processing -> Alert creation.
+ */
+class RuleEngineE2ETest extends BaseDbTest {
+
+    @Autowired
+    private RabbitTemplate rabbitTemplate;
+
+    @Autowired
+    private RabbitQueueProperties rabbitQueueProperties;
+
+    @Autowired
+    private DeviceDataRepository deviceDataRepository;
+
+    @Autowired
+    private RuleRepository ruleRepository;
+
+    @Autowired
+    private AlertRepository alertRepository;
+
+    @BeforeEach
+    void setUp() {
+        deviceDataRepository.deleteAll();
+        ruleRepository.deleteAll();
+        alertRepository.deleteAll();
+    }
+
+    @Test
+    void testE2EWithSatisfiedRule() {
+        // Create device data
+        DeviceDataDocument deviceData = createDeviceData("device-1", 1L, Map.of("temperature", 30.0));
+        deviceData = deviceDataRepository.save(deviceData);
+
+        // Create rule
+        Rule rule = createRule("device-1", "temperature", Map.of(
+                "type", "gt",
+                "value", 25.0
+        ));
+        rule = ruleRepository.save(rule);
+
+        // Send message to RabbitMQ (send as plain string, not JSON)
+        rabbitTemplate.convertAndSend("", rabbitQueueProperties.getDeviceData(), deviceData.getId());
+
+        // Wait for async processing and verify alert was created
+        final String ruleId = rule.getId();
+        final String deviceDataId = deviceData.getId();
+        await().atMost(10, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).untilAsserted(() -> {
+            List<Alert> alerts = alertRepository.findAll();
+            assertThat(alerts).hasSize(1);
+            assertThat(alerts.get(0).getRuleId()).isEqualTo(ruleId);
+            assertThat(alerts.get(0).getDeviceDataId()).isEqualTo(deviceDataId);
+        });
+    }
+
+    @Test
+    void testE2EWithNotSatisfiedRule() {
+        // Create device data
+        DeviceDataDocument deviceData = createDeviceData("device-1", 1L, Map.of("temperature", 20.0));
+        deviceData = deviceDataRepository.save(deviceData);
+
+        // Create rule
+        Rule rule = createRule("device-1", "temperature", Map.of(
+                "type", "gt",
+                "value", 25.0
+        ));
+        ruleRepository.save(rule);
+
+        // Send message to RabbitMQ (send as plain string, not JSON)
+        rabbitTemplate.convertAndSend("", rabbitQueueProperties.getDeviceData(), deviceData.getId());
+
+        // Wait for async processing and verify no alert was created
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            List<Alert> alerts = alertRepository.findAll();
+            assertThat(alerts).isEmpty();
+        });
+    }
+
+    @Test
+    void testE2EWithMultipleRules() {
+        // Create device data
+        DeviceDataDocument deviceData = createDeviceData("device-1", 1L, Map.of(
+                "temperature", 30.0,
+                "humidity", 70.0
+        ));
+        deviceData = deviceDataRepository.save(deviceData);
+
+        // Create multiple rules
+        Rule rule1 = createRule("device-1", "temperature", Map.of("type", "gt", "value", 25.0));
+        Rule rule2 = createRule("device-1", "humidity", Map.of("type", "gt", "value", 60.0));
+        rule1 = ruleRepository.save(rule1);
+        rule2 = ruleRepository.save(rule2);
+
+        // Send message to RabbitMQ (send as plain string, not JSON)
+        rabbitTemplate.convertAndSend("", rabbitQueueProperties.getDeviceData(), deviceData.getId());
+
+        // Wait for async processing and verify both alerts were created
+        await().atMost(10, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).untilAsserted(() -> {
+            List<Alert> alerts = alertRepository.findAll();
+            assertThat(alerts).hasSize(2);
+        });
+    }
+
+    @Test
+    void testE2EWithRepeatRule() {
+        // Create 3 consecutive packages
+        for (long seq = 1; seq <= 3; seq++) {
+            DeviceDataDocument deviceData = createDeviceData("device-1", seq, Map.of("temperature", 30.0));
+            deviceDataRepository.save(deviceData);
+        }
+
+        // Get the latest one
+        DeviceDataDocument latestData = deviceDataRepository.findByDeviceIdOrderBySeqDesc("device-1",
+                org.springframework.data.domain.PageRequest.of(0, 1)).get(0);
+
+        // Create repeat rule
+        Rule rule = createRule("device-1", "temperature", Map.of(
+                "type", "repeat",
+                "times", 3,
+                "value", Map.of("type", "gt", "value", 25.0)
+        ));
+        rule = ruleRepository.save(rule);
+
+        // Send message to RabbitMQ
+        rabbitTemplate.convertAndSend(rabbitQueueProperties.getDeviceData(), latestData.getId());
+
+        // Wait for async processing and verify alert was created
+        final String ruleId = rule.getId();
+        await().atMost(10, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).untilAsserted(() -> {
+            List<Alert> alerts = alertRepository.findAll();
+            assertThat(alerts).hasSize(1);
+            assertThat(alerts.get(0).getRuleId()).isEqualTo(ruleId);
+        });
+    }
+
+    @Test
+    void testE2EWithNoRules() {
+        // Create device data
+        DeviceDataDocument deviceData = createDeviceData("device-1", 1L, Map.of("temperature", 30.0));
+        deviceData = deviceDataRepository.save(deviceData);
+
+        // Send message to RabbitMQ (no rules exist)
+        rabbitTemplate.convertAndSend(rabbitQueueProperties.getDeviceData(), deviceData.getId());
+
+        // Wait for async processing and verify no alert was created
+        await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
+            List<Alert> alerts = alertRepository.findAll();
+            assertThat(alerts).isEmpty();
+        });
+    }
+
+    private Rule createRule(String deviceId, String metricName, Map<String, Object> ruleContent) {
+        Rule rule = new Rule();
+        rule.setDeviceId(deviceId);
+        rule.setMetricName(metricName);
+        rule.setRuleContent(ruleContent);
+        return rule;
+    }
+
+    private DeviceDataDocument createDeviceData(String deviceId, Long seq, Map<String, Object> metrics) {
+        DeviceDataDocument deviceData = new DeviceDataDocument();
+        deviceData.setDeviceId(deviceId);
+        deviceData.setSeq(seq);
+        deviceData.setTimestamp(OffsetDateTime.now());
+        deviceData.setMetrics(metrics);
+        return deviceData;
+    }
+}

@@ -1,5 +1,6 @@
 package ru.itmo.mopsync.ruleengine;
 
+import org.springframework.amqp.rabbit.annotation.EnableRabbit;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.data.mongodb.repository.config.EnableMongoRepositories;
@@ -9,6 +10,7 @@ import org.springframework.data.mongodb.repository.config.EnableMongoRepositorie
  */
 @SpringBootApplication
 @EnableMongoRepositories
+@EnableRabbit
 public class RuleEngineApplication {
 
     /**
