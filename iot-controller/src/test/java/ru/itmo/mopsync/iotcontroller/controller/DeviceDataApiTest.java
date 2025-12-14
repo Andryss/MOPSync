@@ -15,6 +15,7 @@ import ru.itmo.mopsync.iotcontroller.repository.DeviceDataRepository;
 import ru.itmo.mopsync.iotcontroller.service.RabbitMqMessageSender;
 
 import java.time.OffsetDateTime;
+import java.time.temporal.ChronoUnit;
 import java.util.List;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -70,7 +71,9 @@ class DeviceDataApiTest extends BaseDbTest {
         assertThat(saved).hasSize(1);
         DeviceDataDocument document = saved.get(0);
         assertThat(document.getDeviceId()).isEqualTo("device-123");
-        assertThat(document.getTimestamp()).isEqualTo(timestamp);
+        // Timestamp is stored as UTC in MongoDB with millisecond precision, so truncate to milliseconds for comparison
+        assertThat(document.getTimestamp().toInstant().truncatedTo(ChronoUnit.MILLIS))
+                .isEqualTo(timestamp.toInstant().truncatedTo(ChronoUnit.MILLIS));
         assertThat(document.getSeq()).isEqualTo(100L);
         assertThat(document.getMetrics()).containsEntry("temperature", 25.5);
         assertThat(document.getMetrics()).containsEntry("humidity", 60);
@@ -105,11 +108,15 @@ class DeviceDataApiTest extends BaseDbTest {
         assertThat(saved).hasSize(1);
         DeviceDataDocument document = saved.get(0);
         assertThat(document.getDeviceId()).isEqualTo("device-456");
-        assertThat(document.getTimestamp()).isEqualTo(timestamp);
+        // Timestamp is stored as UTC in MongoDB with millisecond precision, so truncate to milliseconds for comparison
+        assertThat(document.getTimestamp().toInstant().truncatedTo(ChronoUnit.MILLIS))
+                .isEqualTo(timestamp.toInstant().truncatedTo(ChronoUnit.MILLIS));
         assertThat(document.getSeq()).isEqualTo(200L);
         assertThat(document.getMetrics()).containsEntry("temperature", 30.7);
         assertThat(document.getMetrics()).containsEntry("pressure", 1013.25);
-        assertThat(document.getMeta()).isNull();
+        // MongoDB stores null as empty map, so check if it's null or empty
+        assertThat(document.getMeta()).satisfies(meta -> 
+                assertThat(meta == null || meta.isEmpty()).isTrue());
 
         verify(rabbitMqMessageSender).sendDeviceDataNotification(document.getId());
     }
@@ -138,7 +145,9 @@ class DeviceDataApiTest extends BaseDbTest {
         assertThat(saved).hasSize(1);
         DeviceDataDocument document = saved.get(0);
         assertThat(document.getDeviceId()).isEqualTo("device-789");
-        assertThat(document.getTimestamp()).isEqualTo(timestamp);
+        // Timestamp is stored as UTC in MongoDB with millisecond precision, so truncate to milliseconds for comparison
+        assertThat(document.getTimestamp().toInstant().truncatedTo(ChronoUnit.MILLIS))
+                .isEqualTo(timestamp.toInstant().truncatedTo(ChronoUnit.MILLIS));
         assertThat(document.getSeq()).isEqualTo(300L);
         assertThat(document.getMetrics()).containsEntry("status", "online");
         assertThat(document.getMetrics()).containsEntry("mode", "auto");
@@ -495,7 +504,9 @@ class DeviceDataApiTest extends BaseDbTest {
         assertThat(saved).hasSize(1);
         DeviceDataDocument document = saved.get(0);
         assertThat(document.getDeviceId()).isEqualTo("device-123");
-        assertThat(document.getMeta()).isNull();
+        // MongoDB stores null as empty map, so check if it's null or empty
+        assertThat(document.getMeta()).satisfies(meta -> 
+                assertThat(meta == null || meta.isEmpty()).isTrue());
 
         verify(rabbitMqMessageSender).sendDeviceDataNotification(document.getId());
     }
