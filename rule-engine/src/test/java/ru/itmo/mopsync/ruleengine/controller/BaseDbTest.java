@@ -11,9 +11,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
  * Abstract base class for database integration tests using Testcontainers.
  * Provides common Spring Boot test configuration with RabbitMQ disabled.
  */
-@SpringBootTest(properties = {
-        "spring.autoconfigure.exclude=org.springframework.boot.autoconfigure.amqp.RabbitAutoConfiguration"
-})
+@SpringBootTest
 @Testcontainers
 public abstract class BaseDbTest {
 
