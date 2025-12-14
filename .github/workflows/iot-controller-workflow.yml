@@ -29,3 +29,10 @@ jobs:
 
       - name: Run tests and checks
         run: cd iot-controller && mvn clean verify
+
+      - name: Upload JaCoCo coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: jacoco-report-iot-controller
+          path: iot-controller/target/site/jacoco/
+          retention-days: 30

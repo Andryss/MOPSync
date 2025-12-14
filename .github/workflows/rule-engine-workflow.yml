@@ -29,3 +29,10 @@ jobs:
 
       - name: Run tests and checks
         run: cd rule-engine && mvn clean verify
+
+      - name: Upload JaCoCo coverage report
+        uses: actions/upload-artifact@v3
+        with:
+          name: jacoco-report-rule-engine
+          path: rule-engine/target/site/jacoco/
+          retention-days: 30
