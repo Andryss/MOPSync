@@ -22,6 +22,7 @@
 
         <swagger-annotations.version>2.2.23</swagger-annotations.version>
         <jackson-databind-nullable.version>0.2.6</jackson-databind-nullable.version>
+        <logstash-logback-encoder.version>7.4</logstash-logback-encoder.version>
 
         <checkstyle-plugin.version>3.6.0</checkstyle-plugin.version>
         <jacoco-plugin.version>0.8.11</jacoco-plugin.version>
@@ -68,6 +69,12 @@
             <groupId>org.openapitools</groupId>
             <artifactId>jackson-databind-nullable</artifactId>
             <version>${jackson-databind-nullable.version}</version>
+        </dependency>
+
+        <dependency>
+            <groupId>net.logstash.logback</groupId>
+            <artifactId>logstash-logback-encoder</artifactId>
+            <version>${logstash-logback-encoder.version}</version>
         </dependency>
 
         <!-- TEST DEPENDENCIES -->

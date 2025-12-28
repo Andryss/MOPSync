@@ -5,6 +5,8 @@ services:
   data-simulator:
     container_name: app-data-simulator
     build: ./data-simulator
+    volumes:
+      - ./.data-simulator/logs:/opt/app/logs
     depends_on:
       iot-controller:
         condition: service_started
@@ -14,6 +16,8 @@ services:
   iot-controller:
     container_name: app-iot-controller
     build: ./iot-controller
+    volumes:
+      - ./.iot-controller/logs:/opt/app/logs
     depends_on:
       mongo:
         condition: service_healthy
@@ -25,6 +29,8 @@ services:
   rule-engine:
     container_name: app-rule-engine
     build: ./rule-engine
+    volumes:
+      - ./.rule-engine/logs:/opt/app/logs
     depends_on:
       mongo:
         condition: service_healthy
@@ -66,6 +72,96 @@ services:
       interval: 5s
       timeout: 5s
       retries: 10
+
+  compass:
+    container_name: infra-mongocompass
+    image: mongo-express:1.0.2-18-alpine3.19
+    ports:
+      - "8081:8081"
+    environment:
+      ME_CONFIG_MONGODB_ADMINUSERNAME: root
+      ME_CONFIG_MONGODB_ADMINPASSWORD: example
+      ME_CONFIG_MONGODB_URL: mongodb://root:example@mongo:27017/
+      ME_CONFIG_BASICAUTH_USERNAME: admin
+      ME_CONFIG_BASICAUTH_PASSWORD: admin
+    depends_on:
+      mongo:
+        condition: service_healthy
+    networks:
+      - default
+
+  elasticsearch:
+    container_name: infra-elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - .elasticsearch:/usr/share/elasticsearch/data
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  logstash:
+    container_name: infra-logstash
+    image: docker.elastic.co/logstash/logstash:8.11.0
+    volumes:
+      - ./conf/logstash/config/logstash.yml:/usr/share/logstash/config/logstash.yml:ro
+      - ./conf/logstash/pipeline:/usr/share/logstash/pipeline:ro
+    ports:
+      - "5044:5044"
+      - "9600:9600"
+    environment:
+      - "LS_JAVA_OPTS=-Xmx256m -Xms256m"
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - default
+
+  kibana:
+    container_name: infra-kibana
+    image: docker.elastic.co/kibana/kibana:8.11.0
+    ports:
+      - "5601:5601"
+    environment:
+      - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
+      - xpack.security.enabled=false
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  filebeat:
+    container_name: infra-filebeat
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    user: root
+    volumes:
+      - ./conf/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./.data-simulator/logs:/logs/data-simulator:ro
+      - ./.iot-controller/logs:/logs/iot-controller:ro
+      - ./.rule-engine/logs:/logs/rule-engine:ro
+    depends_on:
+      elasticsearch:
+        condition: service_healthy
+      logstash:
+        condition: service_started
+    networks:
+      - default
 
 networks:
   default:

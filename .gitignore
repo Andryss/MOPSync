@@ -1,3 +1,10 @@
 .idea/
 *.iml
 **/.cursorrules
+
+# Data volumes
+.mongo/
+.elasticsearch/
+.data-simulator/
+.iot-controller/
+.rule-engine/
