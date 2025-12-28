@@ -195,6 +195,12 @@
                 <groupId>org.jacoco</groupId>
                 <artifactId>jacoco-maven-plugin</artifactId>
                 <version>${jacoco-plugin.version}</version>
+                <configuration>
+                    <excludes>
+                        <!-- exclude generated classes -->
+                        <exclude>**/generated/**</exclude>
+                    </excludes>
+                </configuration>
                 <executions>
                     <execution>
                         <id>prepare-agent</id>
@@ -216,9 +222,6 @@
                             <goal>check</goal>
                         </goals>
                         <configuration>
-                            <excludes>
-                                <exclude>**/generated/**</exclude>
-                            </excludes>
                             <rules>
                                 <rule>
                                     <element>BUNDLE</element>
