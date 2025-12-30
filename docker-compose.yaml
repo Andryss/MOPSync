@@ -2,16 +2,41 @@ version: "3.9"
 
 services:
 
-  data-simulator:
-    container_name: app-data-simulator
-    build: ./data-simulator
+  rabbitmq:
+    container_name: wire-rabbitmq
+    image: rabbitmq:4.2.1-management-alpine
+    ports:
+      - "5672:5672"     # AMQP
+      - "15672:15672"   # Management UI
+    environment:
+      RABBITMQ_DEFAULT_USER: user
+      RABBITMQ_DEFAULT_PASS: pass
     volumes:
-      - ./.data-simulator/logs:/opt/app/logs
-    depends_on:
-      iot-controller:
-        condition: service_started
+      - .rabbitmq:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  mongo:
+    container_name: db-mongo
+    image: mongo:6.0.13-jammy
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_DATABASE: iot
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+    volumes:
+      - .mongo:/data/db
     networks:
       - default
+    healthcheck:
+      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
 
   iot-controller:
     container_name: app-iot-controller
@@ -39,39 +64,16 @@ services:
     networks:
       - default
 
-  rabbitmq:
-    container_name: wire-rabbitmq
-    image: rabbitmq:4.2.1-management-alpine
-    ports:
-      - "5672:5672"     # AMQP
-      - "15672:15672"   # Management UI
-    environment:
-      RABBITMQ_DEFAULT_USER: user
-      RABBITMQ_DEFAULT_PASS: pass
-    healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "status"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
-
-  mongo:
-    container_name: db-mongo
-    image: mongo:6.0.13-jammy
-    ports:
-      - "27017:27017"
-    environment:
-      MONGO_INITDB_DATABASE: iot
-      MONGO_INITDB_ROOT_USERNAME: root
-      MONGO_INITDB_ROOT_PASSWORD: example
+  data-simulator:
+    container_name: app-data-simulator
+    build: ./data-simulator
     volumes:
-      - .mongo:/data/db
+      - ./.data-simulator/logs:/opt/app/logs
+    depends_on:
+      iot-controller:
+        condition: service_started
     networks:
       - default
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
 
   compass:
     container_name: infra-mongocompass
@@ -105,7 +107,7 @@ services:
     networks:
       - default
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:9200/_cluster/health || exit 1"]
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -E '\"status\":\"(yellow|green)\"'"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -126,12 +128,19 @@ services:
         condition: service_healthy
     networks:
       - default
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9600/_node/pipelines | grep -E '\"status\":\"(yellow|green)\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
 
   kibana:
     container_name: infra-kibana
     image: docker.elastic.co/kibana/kibana:8.11.0
     ports:
       - "5601:5601"
+    volumes:
+      - ./conf/kibana/kibana.yml:/usr/share/kibana/config/kibana.yml:ro
     environment:
       - ELASTICSEARCH_HOSTS=http://elasticsearch:9200
       - xpack.security.enabled=false
@@ -141,7 +150,7 @@ services:
     networks:
       - default
     healthcheck:
-      test: ["CMD-SHELL", "curl -f http://localhost:5601/api/status || exit 1"]
+      test: ["CMD-SHELL", "curl -s http://localhost:5601/api/status | grep -E '\"overall\":{\"level\":\"available\"'"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -155,6 +164,7 @@ services:
       - ./.data-simulator/logs:/logs/data-simulator:ro
       - ./.iot-controller/logs:/logs/iot-controller:ro
       - ./.rule-engine/logs:/logs/rule-engine:ro
+      - ./.filebeat/logs:/var/log/filebeat
     depends_on:
       elasticsearch:
         condition: service_healthy
@@ -162,6 +172,12 @@ services:
         condition: service_started
     networks:
       - default
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep -f filebeat || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   prometheus:
     container_name: infra-prometheus

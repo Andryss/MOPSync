@@ -4,7 +4,9 @@
 
 # Data volumes
 .mongo/
+.rabbitmq/
 .elasticsearch/
+.filebeat/
 .prometheus/
 .grafana/
 .data-simulator/
