@@ -5,6 +5,8 @@
 # Data volumes
 .mongo/
 .elasticsearch/
+.prometheus/
+.grafana/
 .data-simulator/
 .iot-controller/
 .rule-engine/
