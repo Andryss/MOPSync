@@ -1,46 +1,34 @@
 filebeat.inputs:
-  - type: log
+  - type: filestream
     paths:
       - '/logs/data-simulator/server.json.log'
       - '/logs/data-simulator/server-*.json.log'
-    json.keys_under_root: true
-    json.add_error_key: true
     fields:
       service: data-simulator
-    fields_under_root: false
+      env: prod
+    fields_under_root: true
 
-  - type: log
+  - type: filestream
     paths:
       - '/logs/iot-controller/server.json.log'
       - '/logs/iot-controller/server-*.json.log'
-    json.keys_under_root: true
-    json.add_error_key: true
     fields:
       service: iot-controller
-    fields_under_root: false
+      env: prod
+    fields_under_root: true
 
-  - type: log
+  - type: filestream
     paths:
       - '/logs/rule-engine/server.json.log'
       - '/logs/rule-engine/server-*.json.log'
-    json.keys_under_root: true
-    json.add_error_key: true
     fields:
       service: rule-engine
-    fields_under_root: false
-
-processors:
-  - add_fields:
-      fields:
-        environment: development
+      env: prod
+    fields_under_root: true
 
 output.logstash:
   hosts: ["logstash:5044"]
 
-logging.level: info
-logging.to_files: true
-logging.files:
-  path: /var/log/filebeat
-  name: filebeat
-  keepfiles: 7
-  permissions: 0644
+processors:
+  - add_host_metadata: {}
+  - add_cloud_metadata: {}

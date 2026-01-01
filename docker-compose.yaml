@@ -92,25 +92,24 @@ services:
     networks:
       - default
 
-  elasticsearch:
-    container_name: infra-elasticsearch
-    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
-    environment:
-      - discovery.type=single-node
-      - xpack.security.enabled=false
-      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
-    ports:
-      - "9200:9200"
-      - "9300:9300"
+  filebeat:
+    container_name: infra-filebeat
+    image: docker.elastic.co/beats/filebeat:8.11.0
+    user: root
     volumes:
-      - .elasticsearch:/usr/share/elasticsearch/data
+      - ./conf/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
+      - ./.data-simulator/logs:/logs/data-simulator:ro
+      - ./.iot-controller/logs:/logs/iot-controller:ro
+      - ./.rule-engine/logs:/logs/rule-engine:ro
+      - ./.filebeat/logs:/var/log/filebeat
     networks:
       - default
     healthcheck:
-      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -E '\"status\":\"(yellow|green)\"'"]
-      interval: 10s
-      timeout: 5s
-      retries: 10
+      test: ["CMD-SHELL", "pgrep -f filebeat || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
 
   logstash:
     container_name: infra-logstash
@@ -130,6 +129,26 @@ services:
       - default
     healthcheck:
       test: ["CMD-SHELL", "curl -s http://localhost:9600/_node/pipelines | grep -E '\"status\":\"(yellow|green)\"'"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+
+  elasticsearch:
+    container_name: infra-elasticsearch
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.11.0
+    environment:
+      - discovery.type=single-node
+      - xpack.security.enabled=false
+      - "ES_JAVA_OPTS=-Xms512m -Xmx512m"
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    volumes:
+      - .elasticsearch:/usr/share/elasticsearch/data
+    networks:
+      - default
+    healthcheck:
+      test: ["CMD-SHELL", "curl -s http://localhost:9200/_cluster/health | grep -E '\"status\":\"(yellow|green)\"'"]
       interval: 10s
       timeout: 5s
       retries: 10
@@ -154,30 +173,6 @@ services:
       interval: 10s
       timeout: 5s
       retries: 10
-
-  filebeat:
-    container_name: infra-filebeat
-    image: docker.elastic.co/beats/filebeat:8.11.0
-    user: root
-    volumes:
-      - ./conf/filebeat/filebeat.yml:/usr/share/filebeat/filebeat.yml:ro
-      - ./.data-simulator/logs:/logs/data-simulator:ro
-      - ./.iot-controller/logs:/logs/iot-controller:ro
-      - ./.rule-engine/logs:/logs/rule-engine:ro
-      - ./.filebeat/logs:/var/log/filebeat
-    depends_on:
-      elasticsearch:
-        condition: service_healthy
-      logstash:
-        condition: service_started
-    networks:
-      - default
-    healthcheck:
-      test: ["CMD-SHELL", "pgrep -f filebeat || exit 1"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 40s
 
   prometheus:
     container_name: infra-prometheus

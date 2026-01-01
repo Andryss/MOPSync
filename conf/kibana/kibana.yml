@@ -1,0 +1,16 @@
+server.name: "kibana"
+server.host: "0.0.0.0"
+server.port: 5601
+
+elasticsearch.hosts: ["http://elasticsearch:9200"]
+elasticsearch.requestTimeout: 30000
+
+# Security settings (disabled for development)
+xpack.security.enabled: false
+xpack.encryptedSavedObjects.encryptionKey: "something_at_least_32_characters_long"
+
+xpack.monitoring.ui.container.elasticsearch.enabled: true
+
+logging:
+  root:
+    level: info
