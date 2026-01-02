@@ -24,7 +24,7 @@ public class RabbitMqConfig {
      */
     @Bean
     public Queue deviceDataQueue() {
-        return new Queue(rabbitQueueProperties.getDeviceData(), true); // durable queue
+        return new Queue(rabbitQueueProperties.getDeviceData(), true);
     }
 
     /**

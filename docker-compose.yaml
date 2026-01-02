@@ -36,6 +36,8 @@ services:
   iot-controller:
     container_name: app-iot-controller
     build: ./iot-controller
+    ports:
+      - "8082:8080"
     volumes:
       - ./.iot-controller/logs:/opt/app/logs
     depends_on:
@@ -49,6 +51,8 @@ services:
   rule-engine:
     container_name: app-rule-engine
     build: ./rule-engine
+    ports:
+      - "8083:8080"
     volumes:
       - ./.rule-engine/logs:/opt/app/logs
     depends_on:
@@ -62,6 +66,8 @@ services:
   data-simulator:
     container_name: app-data-simulator
     build: ./data-simulator
+    ports:
+      - "8084:8080"
     volumes:
       - ./.data-simulator/logs:/opt/app/logs
     depends_on:
