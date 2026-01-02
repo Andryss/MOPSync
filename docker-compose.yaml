@@ -32,11 +32,6 @@ services:
       - .mongo:/data/db
     networks:
       - default
-    healthcheck:
-      test: ["CMD", "mongosh", "--eval", "db.adminCommand('ping')"]
-      interval: 5s
-      timeout: 5s
-      retries: 10
 
   iot-controller:
     container_name: app-iot-controller
@@ -45,7 +40,7 @@ services:
       - ./.iot-controller/logs:/opt/app/logs
     depends_on:
       mongo:
-        condition: service_healthy
+        condition: service_started
       rabbitmq:
         condition: service_healthy
     networks:
@@ -58,7 +53,7 @@ services:
       - ./.rule-engine/logs:/opt/app/logs
     depends_on:
       mongo:
-        condition: service_healthy
+        condition: service_started
       rabbitmq:
         condition: service_healthy
     networks:
@@ -88,7 +83,7 @@ services:
       ME_CONFIG_BASICAUTH_PASSWORD: admin
     depends_on:
       mongo:
-        condition: service_healthy
+        condition: service_started
     networks:
       - default
 
