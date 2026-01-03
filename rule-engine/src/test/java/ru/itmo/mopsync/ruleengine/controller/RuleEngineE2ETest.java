@@ -13,6 +13,7 @@ import org.springframework.data.domain.PageRequest;
 import ru.itmo.mopsync.ruleengine.config.RabbitQueueProperties;
 import ru.itmo.mopsync.ruleengine.model.Alert;
 import ru.itmo.mopsync.ruleengine.model.DeviceDataDocument;
+import ru.itmo.mopsync.ruleengine.model.DeviceDataNotification;
 import ru.itmo.mopsync.ruleengine.model.Rule;
 import ru.itmo.mopsync.ruleengine.repository.AlertRepository;
 import ru.itmo.mopsync.ruleengine.repository.DeviceDataRepository;
@@ -226,7 +227,8 @@ class RuleEngineE2ETest extends BaseDbTest {
 
     @Test
     void testE2EWithInvalidDeviceDataId() {
-        rabbitTemplate.convertAndSend("", rabbitQueueProperties.getDeviceData(), "non-existent-id");
+        DeviceDataNotification notification = new DeviceDataNotification("non-existent-id");
+        rabbitTemplate.convertAndSend("", rabbitQueueProperties.getDeviceData(), notification);
         sendAndWaitForNoAlert("non-existent-id");
     }
 
@@ -345,7 +347,8 @@ class RuleEngineE2ETest extends BaseDbTest {
     }
 
     private void sendAndWaitForAlert(String deviceDataId, String expectedRuleId, int expectedAlertCount) {
-        rabbitTemplate.convertAndSend("", rabbitQueueProperties.getDeviceData(), deviceDataId);
+        DeviceDataNotification notification = new DeviceDataNotification(deviceDataId);
+        rabbitTemplate.convertAndSend("", rabbitQueueProperties.getDeviceData(), notification);
         await().atMost(10, TimeUnit.SECONDS).pollInterval(100, TimeUnit.MILLISECONDS).untilAsserted(() -> {
             List<Alert> alerts = alertRepository.findAll();
             assertThat(alerts).hasSize(expectedAlertCount);
@@ -356,7 +359,8 @@ class RuleEngineE2ETest extends BaseDbTest {
     }
 
     private void sendAndWaitForNoAlert(String deviceDataId) {
-        rabbitTemplate.convertAndSend("", rabbitQueueProperties.getDeviceData(), deviceDataId);
+        DeviceDataNotification notification = new DeviceDataNotification(deviceDataId);
+        rabbitTemplate.convertAndSend("", rabbitQueueProperties.getDeviceData(), notification);
         await().atMost(5, TimeUnit.SECONDS).untilAsserted(() -> {
             List<Alert> alerts = alertRepository.findAll();
             assertThat(alerts).isEmpty();

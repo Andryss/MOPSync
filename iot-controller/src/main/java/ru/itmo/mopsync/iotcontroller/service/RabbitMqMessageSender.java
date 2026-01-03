@@ -5,6 +5,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
 import org.springframework.stereotype.Component;
 import ru.itmo.mopsync.iotcontroller.config.RabbitQueueProperties;
+import ru.itmo.mopsync.iotcontroller.model.DeviceDataNotification;
 
 /**
  * Service for sending messages to RabbitMQ.
@@ -25,7 +26,8 @@ public class RabbitMqMessageSender {
     public void sendDeviceDataNotification(String deviceDataId) {
         String queueName = rabbitQueueProperties.getDeviceData();
         log.debug("Sending notification to queue {} for device data id: {}", queueName, deviceDataId);
-        rabbitTemplate.convertAndSend(queueName, deviceDataId);
+        DeviceDataNotification notification = new DeviceDataNotification(deviceDataId);
+        rabbitTemplate.convertAndSend(queueName, notification);
         log.debug("Notification sent successfully");
     }
 }
