@@ -1,0 +1,253 @@
+openapi: 3.0.3
+info:
+  title: Rule Engine API
+  description: API for managing rules for IoT device data evaluation
+  version: 1.0.0
+
+servers:
+  - url: http://rule-engine:8080
+
+tags:
+  - name: rules
+    description: API for managing rules
+
+paths:
+  /api/v1/rules:
+    post:
+      summary: Create a new rule
+      operationId: createRule
+      tags:
+        - rules
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RuleRequest"
+      responses:
+        200:
+          description: Rule created successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuleResponse"
+        400:
+          description: Bad request - invalid rule data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorObject"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorObject"
+
+    get:
+      summary: List all rules
+      operationId: listRules
+      tags:
+        - rules
+      parameters:
+        - name: deviceId
+          in: query
+          description: Filter rules by device ID
+          required: false
+          schema:
+            type: string
+        - name: metricName
+          in: query
+          description: Filter rules by metric name
+          required: false
+          schema:
+            type: string
+      responses:
+        200:
+          description: List of rules
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/RuleResponse"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorObject"
+
+  /api/v1/rules/{id}:
+    get:
+      summary: Get a rule by ID
+      operationId: getRule
+      tags:
+        - rules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Rule ID
+          schema:
+            type: string
+      responses:
+        200:
+          description: Rule found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuleResponse"
+        400:
+          description: Bad request - rule not found or invalid ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorObject"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorObject"
+
+    put:
+      summary: Update a rule
+      operationId: updateRule
+      tags:
+        - rules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Rule ID
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RuleRequest"
+      responses:
+        200:
+          description: Rule updated successfully
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/RuleResponse"
+        400:
+          description: Bad request - invalid rule data or rule not found
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorObject"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorObject"
+
+    delete:
+      summary: Delete a rule
+      operationId: deleteRule
+      tags:
+        - rules
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: Rule ID
+          schema:
+            type: string
+      responses:
+        200:
+          description: Rule deleted successfully
+        400:
+          description: Bad request - rule not found or invalid ID
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorObject"
+        500:
+          description: Internal server error
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorObject"
+
+components:
+  schemas:
+    RuleRequest:
+      description: Request object for creating or updating a rule
+      type: object
+      required:
+        - deviceId
+        - metricName
+        - ruleContent
+      properties:
+        deviceId:
+          type: string
+          description: Device identifier
+          minLength: 1
+          example: "device-123"
+        metricName:
+          type: string
+          description: Name of the metric to evaluate
+          minLength: 1
+          example: "temperature"
+        ruleContent:
+          type: object
+          description: |
+            Rule content as generic JSON structure describing the rule logic. 
+            Examples: {type:"gt", value:25.0} for simple rules, {type:"repeat", times:3, value:{type:"gt", value:25.0}} for repeatable rules.
+          additionalProperties: true
+          example:
+            type: "gt"
+            value: 25.0
+
+    RuleResponse:
+      description: Response object representing a rule
+      type: object
+      required:
+        - id
+        - deviceId
+        - metricName
+        - ruleContent
+      properties:
+        id:
+          type: string
+          description: Rule ID (MongoDB document ID)
+          example: "69585922bcd51bd5318d00be"
+        deviceId:
+          type: string
+          description: Device identifier
+          example: "device-123"
+        metricName:
+          type: string
+          description: Name of the metric to evaluate
+          example: "temperature"
+        ruleContent:
+          type: object
+          description: Rule content as generic JSON structure describing the rule logic
+          additionalProperties: true
+          example:
+            type: "gt"
+            value: 25.0
+
+    ErrorObject:
+      description: Error response object
+      type: object
+      properties:
+        code:
+          description: Numeric error code
+          type: integer
+          format: int32
+        message:
+          description: Unique text identifier of the error
+          type: string
+        humanMessage:
+          description: Human-readable error description
+          type: string
+

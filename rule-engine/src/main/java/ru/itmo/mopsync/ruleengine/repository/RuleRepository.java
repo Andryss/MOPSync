@@ -18,4 +18,20 @@ public interface RuleRepository extends MongoRepository<Rule, String> {
      * @return list of rules
      */
     List<Rule> findByDeviceIdAndMetricName(String deviceId, String metricName);
+
+    /**
+     * Finds all rules for a specific device.
+     *
+     * @param deviceId device identifier
+     * @return list of rules
+     */
+    List<Rule> findByDeviceId(String deviceId);
+
+    /**
+     * Finds all rules for a specific metric.
+     *
+     * @param metricName metric name
+     * @return list of rules
+     */
+    List<Rule> findByMetricName(String metricName);
 }
