@@ -1,0 +1,513 @@
+{
+	"info": {
+		"_postman_id": "rule-engine-api",
+		"name": "Rule Engine API",
+		"description": "Postman collection for Rule Engine API endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Rules",
+			"item": [
+				{
+					"name": "Create Rule - Simple",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has rule data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('deviceId');",
+									"    pm.expect(jsonData).to.have.property('metricName');",
+									"    pm.expect(jsonData).to.have.property('ruleContent');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"deviceId\": \"device-123\",\n  \"metricName\": \"temperature\",\n  \"ruleContent\": {\n    \"type\": \"gt\",\n    \"value\": 25.0\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rules",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rules"
+							]
+						},
+						"description": "Create a simple rule: temperature > 25.0"
+					},
+					"response": []
+				},
+				{
+					"name": "Create Rule - Repeat",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"deviceId\": \"device-456\",\n  \"metricName\": \"humidity\",\n  \"ruleContent\": {\n    \"type\": \"repeat\",\n    \"times\": 3,\n    \"value\": {\n      \"type\": \"gt\",\n      \"value\": 60.0\n    }\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rules",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rules"
+							]
+						},
+						"description": "Create a repeat rule: humidity > 60.0 for 3 consecutive times"
+					},
+					"response": []
+				},
+				{
+					"name": "List All Rules",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response is an array\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.be.an('array');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rules",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rules"
+							]
+						},
+						"description": "List all rules"
+					},
+					"response": []
+				},
+				{
+					"name": "List Rules - Filter by Device ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rules?deviceId=device-123",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rules"
+							],
+							"query": [
+								{
+									"key": "deviceId",
+									"value": "device-123"
+								}
+							]
+						},
+						"description": "List rules filtered by device ID"
+					},
+					"response": []
+				},
+				{
+					"name": "List Rules - Filter by Metric Name",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rules?metricName=temperature",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rules"
+							],
+							"query": [
+								{
+									"key": "metricName",
+									"value": "temperature"
+								}
+							]
+						},
+						"description": "List rules filtered by metric name"
+					},
+					"response": []
+				},
+				{
+					"name": "List Rules - Filter by Device ID and Metric Name",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rules?deviceId=device-123&metricName=temperature",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rules"
+							],
+							"query": [
+								{
+									"key": "deviceId",
+									"value": "device-123"
+								},
+								{
+									"key": "metricName",
+									"value": "temperature"
+								}
+							]
+						},
+						"description": "List rules filtered by both device ID and metric name"
+					},
+					"response": []
+				},
+				{
+					"name": "Get Rule by ID",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});",
+									"",
+									"pm.test(\"Response has rule data\", function () {",
+									"    var jsonData = pm.response.json();",
+									"    pm.expect(jsonData).to.have.property('id');",
+									"    pm.expect(jsonData).to.have.property('deviceId');",
+									"    pm.expect(jsonData).to.have.property('metricName');",
+									"    pm.expect(jsonData).to.have.property('ruleContent');",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rules/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rules",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "69585922bcd51bd5318d00be",
+									"description": "Rule ID (MongoDB document ID)"
+								}
+							]
+						},
+						"description": "Get a rule by its ID. Replace :id with actual rule ID from create/list operations."
+					},
+					"response": []
+				},
+				{
+					"name": "Update Rule",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"deviceId\": \"device-789\",\n  \"metricName\": \"pressure\",\n  \"ruleContent\": {\n    \"type\": \"lt\",\n    \"value\": 1000.0\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rules/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rules",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "69585922bcd51bd5318d00be",
+									"description": "Rule ID (MongoDB document ID)"
+								}
+							]
+						},
+						"description": "Update a rule by its ID. Replace :id with actual rule ID."
+					},
+					"response": []
+				},
+				{
+					"name": "Delete Rule",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/rules/:id",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"rules",
+								":id"
+							],
+							"variable": [
+								{
+									"key": "id",
+									"value": "69585922bcd51bd5318d00be",
+									"description": "Rule ID (MongoDB document ID)"
+								}
+							]
+						},
+						"description": "Delete a rule by its ID. Replace :id with actual rule ID."
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for managing rules"
+		},
+		{
+			"name": "Health & Monitoring",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/actuator/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"actuator",
+								"health"
+							]
+						},
+						"description": "Check the health status of the rule-engine service"
+					},
+					"response": []
+				},
+				{
+					"name": "Prometheus Metrics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/actuator/prometheus",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"actuator",
+								"prometheus"
+							]
+						},
+						"description": "Get Prometheus metrics from the rule-engine service"
+					},
+					"response": []
+				},
+				{
+					"name": "Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/actuator/info",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"actuator",
+								"info"
+							]
+						},
+						"description": "Get application information"
+					},
+					"response": []
+				}
+			],
+			"description": "Health and monitoring endpoints"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8083",
+			"type": "string"
+		}
+	]
+}
+

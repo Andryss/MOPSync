@@ -1,0 +1,295 @@
+{
+	"info": {
+		"_postman_id": "iot-controller-api",
+		"name": "IoT Controller API",
+		"description": "Postman collection for IoT Controller API endpoints",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"item": [
+		{
+			"name": "Device Data",
+			"item": [
+				{
+					"name": "Receive Device Data - Number Metrics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"device_id\": \"device-123\",\n  \"timestamp\": \"2025-01-03T12:00:05.234Z\",\n  \"seq\": 1203,\n  \"metrics\": {\n    \"temperature\": 25.5,\n    \"humidity\": 60.0,\n    \"pressure\": 1013.25\n  },\n  \"meta\": {\n    \"firmware\": \"1.0.3\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/device-data",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"device-data"
+							]
+						},
+						"description": "Receive device data with number metrics (temperature, humidity, pressure)"
+					},
+					"response": []
+				},
+				{
+					"name": "Receive Device Data - Mixed Metrics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"device_id\": \"device-456\",\n  \"timestamp\": \"2025-01-03T12:00:10.567Z\",\n  \"seq\": 1204,\n  \"metrics\": {\n    \"temperature\": 30.7,\n    \"status\": \"active\",\n    \"batteryLevel\": 85\n  },\n  \"meta\": {\n    \"firmware\": \"2.0.1\",\n    \"location\": \"warehouse-a\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/device-data",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"device-data"
+							]
+						},
+						"description": "Receive device data with mixed metric types (number, string, integer)"
+					},
+					"response": []
+				},
+				{
+					"name": "Receive Device Data - String Metrics",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"device_id\": \"device-789\",\n  \"timestamp\": \"2025-01-03T12:00:15.890Z\",\n  \"seq\": 1205,\n  \"metrics\": {\n    \"status\": \"online\",\n    \"mode\": \"auto\"\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/device-data",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"device-data"
+							]
+						},
+						"description": "Receive device data with string metrics only"
+					},
+					"response": []
+				},
+				{
+					"name": "Receive Device Data - Without Meta",
+					"event": [
+						{
+							"listen": "test",
+							"script": {
+								"exec": [
+									"pm.test(\"Status code is 200\", function () {",
+									"    pm.response.to.have.status(200);",
+									"});"
+								],
+								"type": "text/javascript"
+							}
+						}
+					],
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"device_id\": \"device-999\",\n  \"timestamp\": \"2025-01-03T12:00:20.123Z\",\n  \"seq\": 1206,\n  \"metrics\": {\n    \"temperature\": 22.0,\n    \"humidity\": 55.0\n  }\n}",
+							"options": {
+								"raw": {
+									"language": "json"
+								}
+							}
+						},
+						"url": {
+							"raw": "{{baseUrl}}/api/v1/device-data",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"api",
+								"v1",
+								"device-data"
+							]
+						},
+						"description": "Receive device data without optional meta field"
+					},
+					"response": []
+				}
+			],
+			"description": "Endpoints for receiving IoT device data"
+		},
+		{
+			"name": "Health & Monitoring",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/actuator/health",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"actuator",
+								"health"
+							]
+						},
+						"description": "Check the health status of the iot-controller service"
+					},
+					"response": []
+				},
+				{
+					"name": "Prometheus Metrics",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/actuator/prometheus",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"actuator",
+								"prometheus"
+							]
+						},
+						"description": "Get Prometheus metrics from the iot-controller service"
+					},
+					"response": []
+				},
+				{
+					"name": "Info",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/actuator/info",
+							"host": [
+								"{{baseUrl}}"
+							],
+							"path": [
+								"actuator",
+								"info"
+							]
+						},
+						"description": "Get application information"
+					},
+					"response": []
+				}
+			],
+			"description": "Health and monitoring endpoints"
+		}
+	],
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					""
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:8082",
+			"type": "string"
+		}
+	]
+}
+
